@@ -1,14 +1,14 @@
-FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
+# Use the latest Playwright image that matches the library version
+FROM mcr.microsoft.com/playwright/python:v1.56.0-jammy
 
-# Set working directory
 WORKDIR /app
 
-# Copy and install Python dependencies
+# Copy dependencies first
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application
-COPY . .
+# Copy your bot code
+COPY bot.py .
 
-# Run the bot
+# Start the bot
 CMD ["python3", "bot.py"]
