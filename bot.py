@@ -13,7 +13,10 @@ SENDER = os.getenv("SENDER")
 PASSWORD = os.getenv("PASSWORD")
 RECEIVER = os.getenv("RECEIVER")
 URL = os.getenv("URL")
-KEYWORDS = os.getenv("KEYWORDS").split(",")
+
+raw_keywords = os.getenv("KEYWORDS")
+KEYWORDS = raw_keywords.split(",") if raw_keywords else []
+
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "60"))  # default: 60 seconds
 
 
