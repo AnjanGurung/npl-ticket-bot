@@ -2,15 +2,16 @@ import time
 from playwright.sync_api import sync_playwright
 import smtplib
 from email.mime.text import MIMEText
+import os
 
-URL = "https://events.khalti.com/events/ET25AMY4AUYM?sub_event=true"
-KEYWORDS = ["Sudurpaschim", "Karnali", "Book Now"]
+# Read variables from Railway
+SENDER = os.getenv("SENDER")
+PASSWORD = os.getenv("PASSWORD")
+RECEIVER = os.getenv("RECEIVER")
+URL = os.getenv("URL")
+KEYWORDS = os.getenv("KEYWORDS").split(",")
 
-SENDER = "anjangurung1995@gmail.com"
-PASSWORD = "yocqeyqbvwtwpgmx"   # your Google App Password
-RECEIVER = "anjangurung1995@gmail.com"
-
-CHECK_INTERVAL = 60  # 1 minute
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", 60))  # default 60 seconds
 
 
 def send_email(msg):
@@ -34,7 +35,7 @@ def monitor():
 
         while True:
             page.goto(URL, wait_until="networkidle")
-            time.sleep(3)
+            time.sleep(2)
 
             text = page.inner_text("body").lower()
 

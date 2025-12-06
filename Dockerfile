@@ -7,4 +7,7 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
+# Install Chromium browser
+RUN playwright install chromium
+
 CMD ["python3", "bot.py"]
