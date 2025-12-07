@@ -3,7 +3,7 @@ import os
 import sys
 from playwright.sync_api import sync_playwright
 import smtplib
-from email.mime_text import MIMEText
+from email.mime.text import MIMEText   # ✅ fixed: mime.text, not mime_text
 
 
 def get_env(key, required=True, default=None):
