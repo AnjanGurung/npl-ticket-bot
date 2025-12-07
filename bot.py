@@ -1,85 +1,101 @@
-print("🔵 BOT.PY HAS STARTED EXECUTING")
-import sys
-print("Python version:", sys.version)
-
-
-print("DEBUG ENV LOADED")
-print("SENDER:", SENDER)
-print("URL:", URL)
-print("KEYWORDS RAW:", os.getenv("KEYWORDS"))
-print("CHECK_INTERVAL:", CHECK_INTERVAL)
-
 import time
 import os
+import sys
 from playwright.sync_api import sync_playwright
 import smtplib
 from email.mime.text import MIMEText
 
 
-# ----------------------------
-# Load Environment Variables
-# ----------------------------
-
-SENDER = os.getenv("SENDER")
-PASSWORD = os.getenv("PASSWORD")
-RECEIVER = os.getenv("RECEIVER")
-URL = os.getenv("URL")
-
-raw_keywords = os.getenv("KEYWORDS")
-KEYWORDS = raw_keywords.split(",") if raw_keywords else []
-
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "60"))  # default: 60 seconds
+# ---------------------------------------------------------
+# 1. HELPER: Safe env getter
+# ---------------------------------------------------------
+def get_env(key, required=True, default=None):
+    value = os.getenv(key, default)
+    if required and not value:
+        print(f"❌ ERROR: Missing required environment variable: {key}")
+        sys.exit(1)
+    return value
 
 
-# ----------------------------
-# Email Sending Function
-# ----------------------------
+# ---------------------------------------------------------
+# 2. LOAD ENVIRONMENT VARIABLES
+# ---------------------------------------------------------
+print("🔵 BOT.PY HAS STARTED EXECUTING")
+print("Python version:", sys.version)
 
+SENDER = get_env("SENDER")
+PASSWORD = get_env("PASSWORD")
+RECEIVER = get_env("RECEIVER")
+URL = get_env("URL")
+KEYWORDS_RAW = get_env("KEYWORDS")
+CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
+
+KEYWORDS = [kw.strip().lower() for kw in KEYWORDS_RAW.split(",")]
+
+print("\n🔧 DEBUG ENVIRONMENT LOADED")
+print("SENDER:", SENDER)
+print("RECEIVER:", RECEIVER)
+print("URL:", URL)
+print("KEYWORDS:", KEYWORDS)
+print("CHECK_INTERVAL:", CHECK_INTERVAL)
+print("------------------------------------------------------\n")
+
+
+# ---------------------------------------------------------
+# 3. EMAIL SENDING FUNCTION
+# ---------------------------------------------------------
 def send_email(message):
-    msg = MIMEText(message)
-    msg["From"] = SENDER
-    msg["To"] = RECEIVER
-    msg["Subject"] = "🔥 NPL Ticket Alert"
+    try:
+        email = MIMEText(message)
+        email["From"] = SENDER
+        email["To"] = RECEIVER
+        email["Subject"] = "🔥 NPL Ticket Alert"
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(SENDER, PASSWORD)
-        server.sendmail(SENDER, RECEIVER, msg.as_string())
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(SENDER, PASSWORD)
+            server.sendmail(SENDER, RECEIVER, email.as_string())
+
+        print("📧 Email sent successfully!")
+    except Exception as e:
+        print("❌ Email sending failed:", e)
 
 
-# ----------------------------
-# Ticket Monitor
-# ----------------------------
-
+# ---------------------------------------------------------
+# 4. MAIN MONITOR FUNCTION
+# ---------------------------------------------------------
 def monitor():
+    print("🚀 Launching Playwright…")
+
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page = browser.new_page()
 
-        print("🚀 Railway NPL Ticket Bot Started…")
+        print("🎉 Chromium launched successfully!")
+        print("🚀 Ticket monitor started...\n")
 
         while True:
             try:
                 page.goto(URL, wait_until="networkidle")
                 time.sleep(2)
 
-                text = page.inner_text("body").lower()
+                body_text = page.inner_text("body").lower()
 
                 for kw in KEYWORDS:
-                    if kw.lower().strip() in text:
-                        alert_msg = f"Keyword FOUND: {kw}\nURL: {URL}"
-                        print(alert_msg)
-                        send_email(alert_msg)
+                    if kw in body_text:
+                        msg = f"Keyword FOUND: {kw}\nURL: {URL}"
+                        print("🔥", msg)
+                        send_email(msg)
 
+                print(f"⏳ Checked page — waiting {CHECK_INTERVAL} seconds...\n")
                 time.sleep(CHECK_INTERVAL)
 
             except Exception as e:
-                print("Error:", e)
+                print("⚠️ Error during monitoring:", e)
                 time.sleep(10)  # prevent crash loop
 
 
-# ----------------------------
-# Start Bot
-# ----------------------------
-
+# ---------------------------------------------------------
+# 5. START
+# ---------------------------------------------------------
 if __name__ == "__main__":
     monitor()
