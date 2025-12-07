@@ -27,7 +27,7 @@ print("DEBUG: DISCORD_WEBHOOK raw:", repr(os.getenv("DISCORD_WEBHOOK")))
 print("DEBUG: ENV KEYS containing 'DISCORD':",
       [k for k in os.environ.keys() if "DISCORD" in k.upper()])
 
-DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK")
+DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK", required=False) # <--- ADD required=False
 URL = get_env("URL")
 KEYWORDS_RAW = get_env("KEYWORDS")
 CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
