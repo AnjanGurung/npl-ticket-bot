@@ -3,19 +3,20 @@ import os
 import sys
 from playwright.sync_api import sync_playwright
 import smtplib
-from email.mime.text import MIMEText   # ✅ fixed: mime.text, not mime_text
+from email.mime.text import MIMEText
 
+def log(msg):
+    print(msg, flush=True)
 
 def get_env(key, required=True, default=None):
     value = os.getenv(key, default)
     if required and not value:
-        print(f"❌ ERROR: Missing required environment variable: {key}")
+        log(f"❌ ERROR: Missing required env var: {key}")
         sys.exit(1)
     return value
 
-
-print("🔵 BOT.PY HAS STARTED EXECUTING")
-print("Python version:", sys.version)
+log("🔵 bot.py starting…")
+log("Python version: " + sys.version)
 
 SENDER = get_env("SENDER")
 PASSWORD = get_env("PASSWORD")
@@ -24,16 +25,14 @@ URL = get_env("URL")
 KEYWORDS_RAW = get_env("KEYWORDS")
 CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
 
-KEYWORDS = [kw.strip().lower() for kw in KEYWORDS_RAW.split(",")]
+KEYWORDS = [k.strip().lower() for k in KEYWORDS_RAW.split(",")]
 
-print("\n🔧 DEBUG ENVIRONMENT LOADED")
-print("SENDER:", SENDER)
-print("RECEIVER:", RECEIVER)
-print("URL:", URL)
-print("KEYWORDS:", KEYWORDS)
-print("CHECK_INTERVAL:", CHECK_INTERVAL)
-print("------------------------------------------------------\n")
-
+log("🔧 ENV loaded successfully!")
+log(f"SENDER={SENDER}")
+log(f"RECEIVER={RECEIVER}")
+log(f"URL={URL}")
+log(f"KEYWORDS={KEYWORDS}")
+log(f"CHECK_INTERVAL={CHECK_INTERVAL}")
 
 def send_email(message):
     try:
@@ -46,41 +45,33 @@ def send_email(message):
             server.login(SENDER, PASSWORD)
             server.sendmail(SENDER, RECEIVER, email.as_string())
 
-        print("📧 Email sent successfully!")
+        log("📧 Email sent!")
     except Exception as e:
-        print("❌ Email sending failed:", e)
-
+        log(f"❌ Email error: {e}")
 
 def monitor():
-    print("🚀 Launching Playwright…")
-
+    log("🚀 Launching Playwright")
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page = browser.new_page()
-
-        print("🎉 Chromium launched successfully!")
-        print("🚀 Ticket monitor started...\n")
+        log("🎉 Chromium launched successfully!")
 
         while True:
             try:
                 page.goto(URL, wait_until="networkidle")
-                time.sleep(2)
-
-                body_text = page.inner_text("body").lower()
+                body = page.inner_text("body").lower()
 
                 for kw in KEYWORDS:
-                    if kw in body_text:
-                        msg = f"Keyword FOUND: {kw}\nURL: {URL}"
-                        print("🔥", msg)
+                    if kw in body:
+                        msg = f"🔥 KEYWORD FOUND: {kw}"
+                        log(msg)
                         send_email(msg)
 
-                print(f"⏳ Checked page — waiting {CHECK_INTERVAL} seconds...\n")
+                log(f"⏳ Sleeping {CHECK_INTERVAL}s")
                 time.sleep(CHECK_INTERVAL)
-
             except Exception as e:
-                print("⚠️ Error during monitoring:", e)
+                log(f"⚠️ Runtime Error: {e}")
                 time.sleep(10)
-
 
 if __name__ == "__main__":
     monitor()
