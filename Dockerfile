@@ -6,7 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install required browsers (Railway often needs this!)
+# Install Chromium + dependencies
 RUN playwright install --with-deps chromium
 
 # Copy bot
