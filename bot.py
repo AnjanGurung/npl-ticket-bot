@@ -22,32 +22,50 @@ def get_env(key, required=True, default=None):
 print("🔵 bot.py starting…")
 print("Python version:", sys.version)
 
+# Show the interesting env keys that the container actually sees
+interesting_keys = [k for k in os.environ.keys()
+                    if k in {"SENDER", "PASSWORD", "RECEIVER",
+                             "URL", "KEYWORDS", "CHECK_INTERVAL",
+                             "DISCORD_WEBHOOK"}]
+print("🌐 Env keys visible to bot.py:", interesting_keys)
+
 SENDER = get_env("SENDER")
 PASSWORD = get_env("PASSWORD")
 RECEIVER = get_env("RECEIVER")
 URL = get_env("URL")
 KEYWORDS_RAW = get_env("KEYWORDS")
-WEBHOOK = get_env("DISCORD_WEBHOOK")   # <-- THIS IS NOW REQUIRED
 CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
+
+# 👉 Discord webhook is OPTIONAL now
+WEBHOOK = os.getenv("DISCORD_WEBHOOK")
+USE_DISCORD = bool(WEBHOOK)
 
 KEYWORDS = [kw.strip().lower() for kw in KEYWORDS_RAW.split(",")]
 
 print("\n🔧 ENV loaded successfully!")
-print("URL=", URL)
-print("KEYWORDS=", KEYWORDS)
-print("CHECK_INTERVAL=", CHECK_INTERVAL)
-print("DISCORD_WEBHOOK=", WEBHOOK[:50] + "...")  # Hide full URL
+print("SENDER =", SENDER)
+print("RECEIVER =", RECEIVER)
+print("URL =", URL)
+print("KEYWORDS =", KEYWORDS)
+print("CHECK_INTERVAL =", CHECK_INTERVAL)
+print("DISCORD_WEBHOOK set? ->", USE_DISCORD)
 print("------------------------------------------------------\n")
 
 
 # ---------------------------------------------------------
-# Send Discord Notification
+# Send Discord Notification (optional)
 # ---------------------------------------------------------
 def send_discord(message):
+    if not USE_DISCORD:
+        print("ℹ️ Discord disabled (no DISCORD_WEBHOOK set).")
+        return
+
     try:
-        payload = { "content": message }
+        payload = {"content": message}
         r = requests.post(WEBHOOK, json=payload)
-        print("📨 Discord status:", r.status_code)
+        print("📨 Discord webhook status:", r.status_code)
+        if r.status_code >= 400:
+            print("❌ Discord response body:", r.text[:300])
     except Exception as e:
         print("❌ Discord error:", e)
 
@@ -82,7 +100,7 @@ def monitor():
                 time.sleep(CHECK_INTERVAL)
 
             except Exception as e:
-                print("⚠ Error:", e)
+                print("⚠️ Error during monitoring:", e)
                 time.sleep(10)
 
 
