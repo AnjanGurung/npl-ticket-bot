@@ -27,7 +27,7 @@ print("DEBUG: DISCORD_WEBHOOK raw:", repr(os.getenv("DISCORD_WEBHOOK")))
 print("DEBUG: ENV KEYS containing 'DISCORD':",
       [k for k in os.environ.keys() if "DISCORD" in k.upper()])
 
-DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK")
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1447108294136303616/Y2LIGi3jsyCjPLsZ-aG3Wt42ua66wQR21-Unr2JJ75I9IxmC0Smz5I0m-f7YBpxFR15U"
 URL = get_env("URL")
 KEYWORDS_RAW = get_env("KEYWORDS")
 CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
