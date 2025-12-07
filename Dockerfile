@@ -1,15 +1,10 @@
 FROM mcr.microsoft.com/playwright/python:v1.56.0-jammy
 
+# Work in /app
 WORKDIR /app
 
-# Copy dependency list
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Chromium + dependencies
-RUN playwright install --with-deps chromium
-
-# Copy bot
+# Copy only the bot code (no requirements step needed!)
 COPY bot.py .
 
-CMD ["python3", "bot.py"]
+# Run Python in unbuffered mode so logs show up immediately
+CMD ["python", "-u", "bot.py"]
