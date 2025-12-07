@@ -1,3 +1,14 @@
+print("🔵 BOT.PY HAS STARTED EXECUTING")
+import sys
+print("Python version:", sys.version)
+
+
+print("DEBUG ENV LOADED")
+print("SENDER:", SENDER)
+print("URL:", URL)
+print("KEYWORDS RAW:", os.getenv("KEYWORDS"))
+print("CHECK_INTERVAL:", CHECK_INTERVAL)
+
 import time
 import os
 from playwright.sync_api import sync_playwright
