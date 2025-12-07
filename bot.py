@@ -1,87 +1,90 @@
-import time
 import os
 import sys
-import requests
+import time
+import json
+from urllib import request, error
 from playwright.sync_api import sync_playwright
 
 
 # ---------------------------------------------------------
-# Helper: Safe env loader
+# 1. Helper to read env vars
 # ---------------------------------------------------------
-def get_env(key, required=True, default=None):
-    value = os.getenv(key, default)
+def get_env(name: str, required: bool = True, default: str | None = None) -> str | None:
+    value = os.getenv(name, default)
     if required and not value:
-        print(f"❌ ERROR: Missing required environment variable: {key}")
+        print(f"❌ ERROR: Missing required environment variable: {name}")
+        sys.stdout.flush()
         sys.exit(1)
     return value
 
 
 # ---------------------------------------------------------
-# Load environment variables
+# 2. Load configuration
 # ---------------------------------------------------------
 print("🔵 bot.py starting…")
 print("Python version:", sys.version)
 
-# Show the interesting env keys that the container actually sees
-interesting_keys = [k for k in os.environ.keys()
-                    if k in {"SENDER", "PASSWORD", "RECEIVER",
-                             "URL", "KEYWORDS", "CHECK_INTERVAL",
-                             "DISCORD_WEBHOOK"}]
-print("🌐 Env keys visible to bot.py:", interesting_keys)
-
-SENDER = get_env("SENDER")
-PASSWORD = get_env("PASSWORD")
-RECEIVER = get_env("RECEIVER")
+DISCORD_WEBHOOK = get_env("DISCORD_WEBHOOK")
+SENDER = get_env("SENDER", required=False, default="npl-ticket-bot")
+RECEIVER = get_env("RECEIVER", required=False, default="discord")
 URL = get_env("URL")
 KEYWORDS_RAW = get_env("KEYWORDS")
 CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
 
-# 👉 Discord webhook is OPTIONAL now
-WEBHOOK = os.getenv("DISCORD_WEBHOOK")
-USE_DISCORD = bool(WEBHOOK)
+KEYWORDS = [kw.strip().lower() for kw in KEYWORDS_RAW.split(",") if kw.strip()]
 
-KEYWORDS = [kw.strip().lower() for kw in KEYWORDS_RAW.split(",")]
-
-print("\n🔧 ENV loaded successfully!")
-print("SENDER =", SENDER)
-print("RECEIVER =", RECEIVER)
-print("URL =", URL)
-print("KEYWORDS =", KEYWORDS)
-print("CHECK_INTERVAL =", CHECK_INTERVAL)
-print("DISCORD_WEBHOOK set? ->", USE_DISCORD)
-print("------------------------------------------------------\n")
+print("🛠 ENV loaded successfully!")
+print("DISCORD_WEBHOOK set:", bool(DISCORD_WEBHOOK))
+print("URL:", URL)
+print("KEYWORDS:", KEYWORDS)
+print("CHECK_INTERVAL:", CHECK_INTERVAL)
+print("------------------------------------------------------")
+sys.stdout.flush()
 
 
 # ---------------------------------------------------------
-# Send Discord Notification (optional)
+# 3. Discord notification
 # ---------------------------------------------------------
-def send_discord(message):
-    if not USE_DISCORD:
-        print("ℹ️ Discord disabled (no DISCORD_WEBHOOK set).")
-        return
+def send_discord(message: str) -> None:
+    payload = {"content": message}
+
+    data = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        DISCORD_WEBHOOK,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
 
     try:
-        payload = {"content": message}
-        r = requests.post(WEBHOOK, json=payload)
-        print("📨 Discord webhook status:", r.status_code)
-        if r.status_code >= 400:
-            print("❌ Discord response body:", r.text[:300])
+        with request.urlopen(req, timeout=10) as resp:
+            # read to force the request to complete
+            resp.read()
+        print("✅ Discord message sent")
+    except error.HTTPError as e:
+        print(f"❌ Discord HTTP error: {e.code} {e.reason}")
+    except error.URLError as e:
+        print(f"❌ Discord network error: {e.reason}")
     except Exception as e:
-        print("❌ Discord error:", e)
+        print("❌ Discord unknown error:", e)
+
+    sys.stdout.flush()
 
 
 # ---------------------------------------------------------
-# Ticket Monitor
+# 4. Main monitor loop
 # ---------------------------------------------------------
-def monitor():
+def monitor() -> None:
     print("🚀 Launching Playwright…")
+    sys.stdout.flush()
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page = browser.new_page()
 
         print("🎉 Chromium launched successfully!")
-        print("🚀 Ticket monitor started...\n")
+        print("🚀 Ticket monitor started…")
+        sys.stdout.flush()
 
         while True:
             try:
@@ -90,22 +93,30 @@ def monitor():
 
                 body_text = page.inner_text("body").lower()
 
+                found_any = False
                 for kw in KEYWORDS:
                     if kw in body_text:
-                        msg = f"🔥 Keyword FOUND: {kw}\n🔗 {URL}"
-                        print(msg)
+                        print(f"🔥 KEYWORD FOUND: {kw}")
+                        msg = f"🔥 NPL Ticket Alert\nKeyword: **{kw}**\nURL: {URL}"
                         send_discord(msg)
+                        found_any = True
 
-                print(f"⏳ Sleeping {CHECK_INTERVAL} seconds…\n")
+                if not found_any:
+                    print("⌛ No keywords found this round.")
+
+                print(f"🕒 Sleeping {CHECK_INTERVAL} seconds…")
+                print("------------------------------------------------------")
+                sys.stdout.flush()
                 time.sleep(CHECK_INTERVAL)
 
             except Exception as e:
-                print("⚠️ Error during monitoring:", e)
+                print("⚠️ Error during monitor loop:", e)
+                sys.stdout.flush()
                 time.sleep(10)
 
 
 # ---------------------------------------------------------
-# Start Bot
+# 5. Entry point
 # ---------------------------------------------------------
 if __name__ == "__main__":
     monitor()
