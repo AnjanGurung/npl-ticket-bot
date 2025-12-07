@@ -4,8 +4,9 @@ import sys
 import requests
 from playwright.sync_api import sync_playwright
 
+
 # ---------------------------------------------------------
-# 1. HELPER: Safe env getter
+# Helper: Safe env loader
 # ---------------------------------------------------------
 def get_env(key, required=True, default=None):
     value = os.getenv(key, default)
@@ -16,45 +17,43 @@ def get_env(key, required=True, default=None):
 
 
 # ---------------------------------------------------------
-# 2. LOAD ENVIRONMENT VARIABLES
+# Load environment variables
 # ---------------------------------------------------------
 print("🔵 bot.py starting…")
 print("Python version:", sys.version)
 
+SENDER = get_env("SENDER")
+PASSWORD = get_env("PASSWORD")
+RECEIVER = get_env("RECEIVER")
 URL = get_env("URL")
 KEYWORDS_RAW = get_env("KEYWORDS")
+WEBHOOK = get_env("DISCORD_WEBHOOK")   # <-- THIS IS NOW REQUIRED
 CHECK_INTERVAL = int(get_env("CHECK_INTERVAL", required=False, default="60"))
-WEBHOOK = get_env("DISCORD_WEBHOOK")
 
 KEYWORDS = [kw.strip().lower() for kw in KEYWORDS_RAW.split(",")]
 
 print("\n🔧 ENV loaded successfully!")
-print("URL =", URL)
-print("KEYWORDS =", KEYWORDS)
-print("CHECK_INTERVAL =", CHECK_INTERVAL)
-print("DISCORD_WEBHOOK =", WEBHOOK)
+print("URL=", URL)
+print("KEYWORDS=", KEYWORDS)
+print("CHECK_INTERVAL=", CHECK_INTERVAL)
+print("DISCORD_WEBHOOK=", WEBHOOK[:50] + "...")  # Hide full URL
 print("------------------------------------------------------\n")
 
 
 # ---------------------------------------------------------
-# 3. DISCORD NOTIFICATION FUNCTION
+# Send Discord Notification
 # ---------------------------------------------------------
 def send_discord(message):
     try:
-        payload = {"content": message}
+        payload = { "content": message }
         r = requests.post(WEBHOOK, json=payload)
-
-        if r.status_code == 204:
-            print("📩 Discord alert sent!")
-        else:
-            print("⚠️ Discord response:", r.text)
-
+        print("📨 Discord status:", r.status_code)
     except Exception as e:
-        print("❌ Failed to send Discord alert:", e)
+        print("❌ Discord error:", e)
 
 
 # ---------------------------------------------------------
-# 4. MAIN MONITOR FUNCTION
+# Ticket Monitor
 # ---------------------------------------------------------
 def monitor():
     print("🚀 Launching Playwright…")
@@ -64,7 +63,7 @@ def monitor():
         page = browser.new_page()
 
         print("🎉 Chromium launched successfully!")
-        print("🚀 Ticket monitoring started...\n")
+        print("🚀 Ticket monitor started...\n")
 
         while True:
             try:
@@ -75,20 +74,20 @@ def monitor():
 
                 for kw in KEYWORDS:
                     if kw in body_text:
-                        msg = f"🔥 KEYWORD FOUND: **{kw}**\n🔗 {URL}"
+                        msg = f"🔥 Keyword FOUND: {kw}\n🔗 {URL}"
                         print(msg)
                         send_discord(msg)
 
-                print(f"⏳ Checked page — sleeping {CHECK_INTERVAL}s...\n")
+                print(f"⏳ Sleeping {CHECK_INTERVAL} seconds…\n")
                 time.sleep(CHECK_INTERVAL)
 
             except Exception as e:
-                print("⚠️ Error:", e)
+                print("⚠ Error:", e)
                 time.sleep(10)
 
 
 # ---------------------------------------------------------
-# 5. START
+# Start Bot
 # ---------------------------------------------------------
 if __name__ == "__main__":
     monitor()
